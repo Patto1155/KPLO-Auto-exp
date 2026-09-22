@@ -9,15 +9,17 @@ from harness.results import records
 
 
 def render_progress(root: Path, profile: str, output: Path) -> dict:
+    config = __import__("json").loads((root / "lab.json").read_text())
+    current_version = config["profiles"][profile].get("version")
     history = [
         row for row in records(root)
         if row.get("parameters", {}).get("profile") == profile
+        and (current_version is None or row.get("parameters", {}).get("profile_version") == current_version)
         and row.get("candidate_metrics")
         and row.get("primary_metric") in row["candidate_metrics"]
     ]
     if not history:
         raise ValueError(f"no quick-stage results for profile {profile!r}")
-    config = __import__("json").loads((root / "lab.json").read_text())
     direction = config["profiles"][profile]["direction"]
     metric = config["profiles"][profile]["primary_metric"]
     scores = [float(row["candidate_metrics"][metric]) for row in history]

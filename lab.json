@@ -18,6 +18,7 @@
       "confirmation_seeds": [1337, 2027, 4099]
     },
     "chess-tactics": {
+      "version": "3.0.0",
       "command": ["python", "benchmark/chess_tactics_eval.py"],
       "primary_metric": "tactical_pass_at_1",
       "direction": "max",

@@ -72,7 +72,7 @@ def run_experiment(root: Path, hypothesis: str, description: str, algorithm: str
         "experiment_id": experiment_id, "parent": parent["experiment_id"],
         "parent_commit": parent["git_commit"], "hypothesis": hypothesis,
         "description": description, "changed_files": paths, "algorithm": algorithm,
-        "parameters": {"profile": profile_name}, "budget": profile["budget"],
+        "parameters": {"profile": profile_name, "profile_version": profile.get("version", "1")}, "budget": profile["budget"],
         "seeds": profile["quick_seeds"], "primary_metric": profile["primary_metric"],
         "protocol_version": PROTOCOL_VERSION,
         "environment": {"python": platform.python_version(), "platform": platform.platform()},

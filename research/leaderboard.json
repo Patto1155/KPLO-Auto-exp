@@ -11,6 +11,66 @@
   },
   {
     "rank": 2,
+    "experiment": "exp_0010",
+    "parent": "exp_0009",
+    "method": "universal-depth3",
+    "score": 1.0,
+    "delta": 0.296875,
+    "compute": 1.9819569689989294,
+    "confirmed": false
+  },
+  {
+    "rank": 3,
+    "experiment": "exp_0011",
+    "parent": "exp_0009",
+    "method": "universal-depth3",
+    "score": 1.0,
+    "delta": 0.296875,
+    "compute": 1.970352629666498,
+    "confirmed": true
+  },
+  {
+    "rank": 4,
+    "experiment": "exp_0012",
+    "parent": "chess-tactics-v3-baseline",
+    "method": "queen-depth5-memo",
+    "score": 0.921875,
+    "delta": 0.25,
+    "compute": 26.727778420001414,
+    "confirmed": false
+  },
+  {
+    "rank": 5,
+    "experiment": "exp_0013",
+    "parent": "chess-tactics-v3-baseline",
+    "method": "queen-depth5-memo",
+    "score": 0.9322916666666666,
+    "delta": 0.25,
+    "compute": 26.769024189999982,
+    "confirmed": true
+  },
+  {
+    "rank": 6,
+    "experiment": "exp_0008",
+    "parent": "chess-tactics-v2-baseline",
+    "method": "queen-depth3",
+    "score": 0.703125,
+    "delta": 0.1875,
+    "compute": 1.927674616999866,
+    "confirmed": false
+  },
+  {
+    "rank": 7,
+    "experiment": "exp_0009",
+    "parent": "chess-tactics-v2-baseline",
+    "method": "queen-depth3",
+    "score": 0.703125,
+    "delta": 0.1875,
+    "compute": 1.8015469010000136,
+    "confirmed": true
+  },
+  {
+    "rank": 8,
     "experiment": "exp_0001",
     "parent": "baseline",
     "method": "smoke-bias",
@@ -20,7 +80,7 @@
     "confirmed": false
   },
   {
-    "rank": 3,
+    "rank": 9,
     "experiment": "exp_0002",
     "parent": "baseline",
     "method": "smoke-bias",

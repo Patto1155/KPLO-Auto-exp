@@ -121,10 +121,10 @@ python research.py experiment --profile chess-tactics \
 python research.py audit exp_0006
 ```
 
-The initial task is a deterministic suite of procedurally generated KQK/KRK positions
-with exactly one mate-in-one. It is deliberately narrow: enough to validate autonomous
-chess-policy research before adding multi-ply tactics, Stockfish scoring or full UCI
-match Elo.
+The current task is a deterministic suite of KQK/KRK positions with exactly one first
+move forcing mate in one, two or three. This leaves a meaningful search frontier while
+remaining cheap enough for rapid agent experiments. Full middlegame tactics, Stockfish
+scoring and UCI match Elo remain later profiles.
 
 See [`docs/IMPLEMENTATION_MAP.md`](docs/IMPLEMENTATION_MAP.md) for the upstream reuse
 decision and [`program.md`](program.md) for the autonomous agent contract.

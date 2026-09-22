@@ -1,7 +1,7 @@
 {
   "id": "chess_tactics",
   "name": "Chess tactical calculation",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "status": "runnable",
   "environment": {
     "game": "chess",
@@ -9,9 +9,9 @@
     "interface": "FEN_to_move_sequence",
     "observation": "position and move history",
     "action_space": "legal principal variation",
-    "terminal_success": "unique legal checkmating move"
+    "terminal_success": "unique legal first move forcing mate in one, two or three"
   },
-  "objective": "Improve mate-in-one accuracy on deterministic, procedurally generated KQK and KRK positions under a fixed inference budget.",
+  "objective": "Improve first-move accuracy on deterministic KQK and KRK positions with unique forced mates in one, two or three under a fixed inference budget.",
   "adapter": {
     "protocol": "jsonl-task-v1",
     "suggested_backends": ["python-chess"],
@@ -31,7 +31,7 @@
   "metrics": {
     "primary": "tactical_pass_at_1",
     "direction": "max",
-    "secondary": ["illegal_move_rate", "crash_rate", "mean_legal_moves", "inference_seconds", "wall_seconds"]
+    "secondary": ["mate_in_one_pass_at_1", "mate_in_two_pass_at_1", "mate_in_three_pass_at_1", "illegal_move_rate", "crash_rate", "mean_legal_moves", "inference_seconds", "wall_seconds"]
   },
   "fairness": [
     "same starting code and experiment budget",

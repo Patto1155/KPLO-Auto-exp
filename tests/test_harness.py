@@ -13,7 +13,7 @@ from benchmark.template_registry import load_template, summaries
 from harness.compare import decide
 from harness.git_state import validate_candidate_paths
 from rl import Rollout
-from benchmark.chess_tactics_eval import generate_suite
+from benchmark.chess_tactics_eval import forcing_moves, generate_suite
 from harness.accept import promote
 from harness.progress import render_progress
 
@@ -54,18 +54,14 @@ class HarnessTests(unittest.TestCase):
             self.assertTrue(template["fairness"])
             self.assertTrue(template["integrity"])
 
-    def test_chess_suite_has_one_mating_move(self):
+    def test_chess_suite_answers_are_legal_and_mate_one_labels_are_exact(self):
         suite = generate_suite(101, 8)
         self.assertEqual(len(suite), 8)
-        for fen, expected in suite:
+        for fen, expected, depth in suite:
             board = chess.Board(fen)
-            mates = []
-            for move in list(board.legal_moves):
-                board.push(move)
-                if board.is_checkmate():
-                    mates.append(move.uci())
-                board.pop()
-            self.assertEqual(mates, [expected])
+            self.assertIn(chess.Move.from_uci(expected), board.legal_moves)
+            if depth <= 3:
+                self.assertEqual(forcing_moves(board, depth), [expected])
 
     def test_champions_are_profile_specific(self):
         with tempfile.TemporaryDirectory() as directory:

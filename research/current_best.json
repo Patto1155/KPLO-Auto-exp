@@ -2,8 +2,8 @@
   "profiles": {
     "chess-tactics": {
       "confirmed": true,
-      "experiment_id": "exp_0007",
-      "git_commit": "ecd299e7af17748588124212fbe09ed5f9dc3367"
+      "experiment_id": "exp_0013",
+      "git_commit": "cfadc7ca375042d7ab477740b81f1c3e2cee7b16"
     },
     "smoke": {
       "confirmed": true,
