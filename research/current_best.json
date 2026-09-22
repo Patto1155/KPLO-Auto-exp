@@ -5,6 +5,11 @@
       "experiment_id": "exp_0013",
       "git_commit": "cfadc7ca375042d7ab477740b81f1c3e2cee7b16"
     },
+    "rl-reasoning": {
+      "confirmed": true,
+      "experiment_id": "exp_0015",
+      "git_commit": "33009e9cd8508a308e2d93d9221e3b705ec58a52"
+    },
     "smoke": {
       "confirmed": true,
       "experiment_id": "exp_0002",
