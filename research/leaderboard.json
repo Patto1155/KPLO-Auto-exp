@@ -1,0 +1,32 @@
+[
+  {
+    "rank": 1,
+    "experiment": "exp_0007",
+    "parent": "chess-tactics-baseline",
+    "method": "mate-in-one-search",
+    "score": 1.0,
+    "delta": 0.953125,
+    "compute": 1.3269523750004737,
+    "confirmed": true
+  },
+  {
+    "rank": 2,
+    "experiment": "exp_0001",
+    "parent": "baseline",
+    "method": "smoke-bias",
+    "score": 0.5298095182140393,
+    "delta": 0.030000000000000027,
+    "compute": 0.025467178999861062,
+    "confirmed": false
+  },
+  {
+    "rank": 3,
+    "experiment": "exp_0002",
+    "parent": "baseline",
+    "method": "smoke-bias",
+    "score": 0.5303054547479515,
+    "delta": 0.030000000000000027,
+    "compute": 0.027661417666422494,
+    "confirmed": true
+  }
+]

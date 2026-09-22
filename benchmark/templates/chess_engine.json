@@ -1,0 +1,49 @@
+{
+  "id": "chess_engine",
+  "name": "Chess policy strength",
+  "version": "1.0.0",
+  "status": "adapter-required",
+  "environment": {
+    "game": "chess",
+    "rules": "standard_fide",
+    "interface": "UCI",
+    "observation": "legal board state plus move history",
+    "action_space": "legal chess moves",
+    "terminal_success": "game result"
+  },
+  "objective": "Improve playing strength against a frozen opponent suite without increasing the per-move inference budget.",
+  "adapter": {
+    "protocol": "uci-match-v1",
+    "suggested_backends": ["python-chess", "cutechess-cli"],
+    "required_artifacts": ["pgn", "engine_stdout", "engine_stderr", "binary_hashes"]
+  },
+  "training_budget": {
+    "self_play_games": 100000,
+    "maximum_wall_hours": 24,
+    "starting_checkpoint": "required"
+  },
+  "evaluation": {
+    "time_control": "0.25+0.025",
+    "opening_policy": "fixed adjudication-free opening suite; paired colors",
+    "quick": {"games": 200, "opponent_suite": "public_frozen_v1"},
+    "confirmation": {"games": 2000, "opponent_suite": "hidden_frozen_v1", "paired_with_parent": true},
+    "seed_policy": "fixed opening and engine seeds; randomized match order"
+  },
+  "metrics": {
+    "primary": "paired_match_score",
+    "direction": "max",
+    "secondary": ["elo_delta", "win_rate", "draw_rate", "loss_rate", "illegal_move_rate", "nodes_per_second", "peak_memory_mb", "mean_move_time_ms"]
+  },
+  "fairness": [
+    "same starting checkpoint, training games and compute budget",
+    "same hardware class, threads, hash size and per-move time",
+    "each opening played twice with colors reversed",
+    "frozen opponents and engine options"
+  ],
+  "integrity": [
+    "evaluation opponents and hidden openings unavailable during training",
+    "illegal move or timeout counts as a loss",
+    "hash engine binaries, networks and PGNs",
+    "flag suspicious opening memorization or anomalous Elo jumps for audit"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "default_profile": "smoke",
+  "profiles": {
+    "smoke": {
+      "command": ["python", "benchmark/toy_train.py"],
+      "primary_metric": "score",
+      "direction": "max",
+      "budget": {"train_seconds": 0.05, "rollouts": 100},
+      "quick_seeds": [11],
+      "confirmation_seeds": [11, 23, 47]
+    },
+    "pretrain": {
+      "command": ["python", "train.py"],
+      "primary_metric": "val_bpb",
+      "direction": "min",
+      "budget": {"train_seconds": 300},
+      "quick_seeds": [1337],
+      "confirmation_seeds": [1337, 2027, 4099]
+    },
+    "chess-tactics": {
+      "command": ["python", "benchmark/chess_tactics_eval.py"],
+      "primary_metric": "tactical_pass_at_1",
+      "direction": "max",
+      "budget": {"positions": 64, "inference_nodes_per_position": 10000},
+      "quick_seeds": [101],
+      "confirmation_seeds": [101, 211, 307]
+    }
+  }
+}

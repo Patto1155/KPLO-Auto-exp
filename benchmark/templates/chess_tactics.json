@@ -1,0 +1,48 @@
+{
+  "id": "chess_tactics",
+  "name": "Chess tactical calculation",
+  "version": "1.0.0",
+  "status": "runnable",
+  "environment": {
+    "game": "chess",
+    "rules": "standard_fide",
+    "interface": "FEN_to_move_sequence",
+    "observation": "position and move history",
+    "action_space": "legal principal variation",
+    "terminal_success": "unique legal checkmating move"
+  },
+  "objective": "Improve mate-in-one accuracy on deterministic, procedurally generated KQK and KRK positions under a fixed inference budget.",
+  "adapter": {
+    "protocol": "jsonl-task-v1",
+    "suggested_backends": ["python-chess"],
+    "required_artifacts": ["per_position_predictions", "suite_hash", "verifier_version"]
+  },
+  "training_budget": {
+    "positions": 64,
+    "maximum_wall_hours": 1,
+    "starting_checkpoint": "required"
+  },
+  "evaluation": {
+    "inference_nodes_per_position": 50000,
+    "quick": {"generated_positions": 64, "seeds": [101]},
+    "confirmation": {"generated_positions_per_seed": 64, "seeds": [101, 211, 307], "paired_with_parent": true},
+    "seed_policy": "fixed protected generator seeds; candidate receives FEN and legal moves but not labels"
+  },
+  "metrics": {
+    "primary": "tactical_pass_at_1",
+    "direction": "max",
+    "secondary": ["illegal_move_rate", "crash_rate", "mean_legal_moves", "inference_seconds", "wall_seconds"]
+  },
+  "fairness": [
+    "same starting code and experiment budget",
+    "same generated positions and legal move lists",
+    "same inference-node ceiling",
+    "parent and candidate use the identical protected verifier"
+  ],
+  "integrity": [
+    "labels are never passed into the mutable policy",
+    "candidate may use chess rules but no external engine, tablebase or network service",
+    "suite and verifier hashes are logged",
+    "illegal moves and policy exceptions are scored explicitly"
+  ]
+}

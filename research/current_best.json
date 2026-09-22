@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "chess-tactics": {
+      "confirmed": true,
+      "experiment_id": "exp_0007",
+      "git_commit": "ecd299e7af17748588124212fbe09ed5f9dc3367"
+    },
+    "smoke": {
+      "confirmed": true,
+      "experiment_id": "exp_0002",
+      "git_commit": "39dd8c7a214e92c99ba9e06392ac21843d4678e8"
+    }
+  }
+}

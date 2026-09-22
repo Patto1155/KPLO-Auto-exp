@@ -1,0 +1,51 @@
+{
+  "id": "go_9x9",
+  "name": "Go 9x9 policy strength",
+  "version": "1.0.0",
+  "status": "adapter-required",
+  "environment": {
+    "game": "go",
+    "board_size": 9,
+    "rules": "Tromp-Taylor",
+    "komi": 7.5,
+    "interface": "GTP",
+    "observation": "board plus move history",
+    "action_space": "legal moves plus pass",
+    "terminal_success": "final area score"
+  },
+  "objective": "Improve 9x9 Go strength against frozen opponents under equal search and inference compute.",
+  "adapter": {
+    "protocol": "gtp-match-v1",
+    "suggested_backends": ["KataGo analysis engine", "OpenSpiel"],
+    "required_artifacts": ["sgf", "gtp_logs", "engine_hashes", "network_hashes"]
+  },
+  "training_budget": {
+    "self_play_games": 200000,
+    "maximum_wall_hours": 24,
+    "starting_checkpoint": "required"
+  },
+  "evaluation": {
+    "visits_per_move": 200,
+    "resignation": "disabled",
+    "quick": {"games": 200, "opponent_suite": "public_frozen_v1"},
+    "confirmation": {"games": 2000, "opponent_suite": "hidden_frozen_v1", "paired_with_parent": true},
+    "seed_policy": "paired colors and matched search seeds"
+  },
+  "metrics": {
+    "primary": "paired_match_win_rate",
+    "direction": "max",
+    "secondary": ["score_margin", "win_rate_by_color", "illegal_move_rate", "visits_per_second", "peak_memory_mb", "mean_move_time_ms"]
+  },
+  "fairness": [
+    "same starting checkpoint, self-play games and training compute",
+    "same visits, threads, hardware class and time limits",
+    "paired colors against every frozen opponent",
+    "identical rules, komi and resignation policy"
+  ],
+  "integrity": [
+    "hidden opponents unavailable during training",
+    "illegal move or protocol failure counts as a loss",
+    "retain SGFs and GTP logs for every game",
+    "flag color imbalance and anomalous win-rate jumps for audit"
+  ]
+}

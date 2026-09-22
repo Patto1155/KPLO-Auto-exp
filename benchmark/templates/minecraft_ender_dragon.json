@@ -1,0 +1,50 @@
+{
+  "id": "minecraft_ender_dragon",
+  "name": "Minecraft survival to Ender Dragon",
+  "version": "1.0.0",
+  "status": "adapter-required",
+  "environment": {
+    "game": "Minecraft Java Edition",
+    "mode": "survival",
+    "difficulty": "normal",
+    "observation": "pixels_plus_inventory",
+    "action_space": "keyboard_mouse",
+    "world_generation": "fresh_seeded_world",
+    "terminal_success": "ender_dragon_killed_by_agent"
+  },
+  "objective": "Train from a fixed starting checkpoint to kill the Ender Dragon in a fresh survival world without commands, operator help, or privileged state.",
+  "adapter": {
+    "protocol": "jsonl-episode-v1",
+    "suggested_backends": ["MineRL-compatible bridge", "Project Malmo-compatible bridge"],
+    "required_artifacts": ["episode_video", "event_log", "inventory_log", "world_seed_hash"]
+  },
+  "training_budget": {
+    "environment_steps": 50000000,
+    "maximum_wall_hours": 168,
+    "maximum_parallel_worlds": 32,
+    "starting_checkpoint": "required"
+  },
+  "evaluation": {
+    "episode_step_limit": 720000,
+    "quick": {"public_worlds": 8, "minimum_successes_for_confirmation": 1},
+    "confirmation": {"hidden_worlds": 32, "paired_with_parent": true},
+    "seed_policy": "commit-reveal; candidate cannot choose or inspect hidden seeds"
+  },
+  "metrics": {
+    "primary": "dragon_kill_rate",
+    "direction": "max",
+    "secondary": ["median_steps_to_kill", "end_reach_rate", "nether_reach_rate", "blaze_rod_rate", "stronghold_reach_rate", "agent_death_rate", "environment_steps", "wall_seconds"]
+  },
+  "fairness": [
+    "identical starting checkpoint and training worlds",
+    "identical environment-step and wall-clock ceilings",
+    "same game version, mods, difficulty, observation and action spaces",
+    "parent and candidate evaluated on the same worlds in randomized order"
+  ],
+  "integrity": [
+    "disable commands, creative mode, save loading and external walkthrough retrieval",
+    "withhold evaluation seed values and world files until launch",
+    "verify dragon death event and agent causal damage from server logs",
+    "flag impossible travel, inventory creation or anomalous completion for video audit"
+  ]
+}
