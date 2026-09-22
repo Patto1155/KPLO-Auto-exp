@@ -7,7 +7,7 @@ from pathlib import Path
 
 from benchmark.evaluate import evaluate
 from benchmark.protocol import PROTOCOL_VERSION
-from harness.accept import preserve_candidate, promote, return_to_parent
+from harness.accept import adopt, preserve_candidate, promote, return_to_parent
 from harness.compare import decide
 from harness.git_state import changed_files, fingerprint, git, head, revision_tree, validate_candidate_paths
 from harness.results import append_record, next_id, records, write_leaderboard
@@ -126,6 +126,7 @@ def confirm(root: Path, experiment_id: str) -> dict:
               "timestamp": datetime.now(timezone.utc).isoformat(), "notes": "; ".join(warnings)}
     if decision == "KEEP":
         promote(root, original["parameters"]["profile"], record["experiment_id"], original["git_commit"])
+        adopt(root, record["experiment_id"], original["git_commit"], original["changed_files"])
     _record(root, record)
     return record
 
@@ -164,6 +165,7 @@ def audit(root: Path, experiment_id: str) -> dict:
               "notes": notes}
     if decision == "KEEP":
         promote(root, profile_name, record["experiment_id"], original["git_commit"])
+        adopt(root, record["experiment_id"], original["git_commit"], original["changed_files"])
     _record(root, record)
     return record
 

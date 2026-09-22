@@ -22,6 +22,13 @@ def head(root: Path) -> str:
     return git(root, "rev-parse", "HEAD")
 
 
+def is_ancestor(root: Path, commit: str, descendant: str = "HEAD") -> bool:
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", commit, descendant], cwd=root, capture_output=True
+    )
+    return result.returncode == 0
+
+
 def changed_files(root: Path) -> list[str]:
     output = git(root, "status", "--porcelain=v1", "--untracked-files=all")
     return sorted(line[3:] for line in output.splitlines() if line)

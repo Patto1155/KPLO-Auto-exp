@@ -31,7 +31,8 @@ from harness.git_state import validate_candidate_paths
 from model import Policy
 from rl import Rollout, Step, analytic_kl, sequence_kl, train_policy
 from benchmark.chess_tactics_eval import forcing_moves, generate_suite
-from harness.accept import promote
+from harness.accept import adopt, preserve_candidate, promote, return_to_parent
+from harness.git_state import git, head
 from harness.progress import render_progress
 
 
@@ -227,6 +228,28 @@ class LedgerAndTemplateTests(unittest.TestCase):
             payload = json.loads((root / "research" / "current_best.json").read_text())
             self.assertEqual(payload["profiles"]["smoke"]["git_commit"], "abc")
             self.assertEqual(payload["profiles"]["chess-tactics"]["git_commit"], "def")
+
+    def test_audited_champion_returns_to_the_active_branch(self):
+        """A rolled-back candidate that an audit promotes must not stay off-branch."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = lambda *args: git(root, *args)  # noqa: E731
+            run("init", "-q", "-b", "main")
+            run("config", "user.email", "test@example.invalid")
+            run("config", "user.name", "Test")
+            (root / "mutable.py").write_text("VALUE = 1\n")
+            run("add", "mutable.py")
+            run("commit", "-q", "-m", "baseline")
+            parent = head(root)
+
+            (root / "mutable.py").write_text("VALUE = 2\n")
+            candidate = preserve_candidate(root, "exp_0001", ["mutable.py"])
+            return_to_parent(root, parent)
+            self.assertEqual((root / "mutable.py").read_text(), "VALUE = 1\n")
+
+            self.assertTrue(adopt(root, "exp_0002", candidate, ["mutable.py"]))
+            self.assertEqual((root / "mutable.py").read_text(), "VALUE = 2\n")
+            self.assertFalse(adopt(root, "exp_0002", candidate, ["mutable.py"]))
 
     def test_progress_chart_requires_history(self):
         with tempfile.TemporaryDirectory() as directory:
