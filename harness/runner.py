@@ -168,6 +168,48 @@ def audit(root: Path, experiment_id: str) -> dict:
     return record
 
 
+ALGORITHM_MATRIX = ("reinforce", "grpo", "klpo", "flashreinforce")
+# Wider than a confirmation run: separating algorithms needs more seeds than
+# separating a candidate from its own parent.
+MATRIX_SEEDS = (101, 211, 307, 401, 509, 601, 701, 809)
+
+
+def algorithm_matrix(
+    root: Path,
+    profile_name: str,
+    algorithms: tuple[str, ...] = ALGORITHM_MATRIX,
+    seeds: tuple[int, ...] = MATRIX_SEEDS,
+) -> dict:
+    """Measure every algorithm on one profile under an identical budget and seed set.
+
+    This establishes reference numbers; it never promotes a champion, because the
+    champion is defined by the committed mutable code rather than by an override.
+    """
+    profile = load_config(root)["profiles"][profile_name]
+    metric = profile["primary_metric"]
+    results = []
+    for name in algorithms:
+        metrics, runs = evaluate(
+            root, profile["command"], list(seeds), profile["budget"], {"NRL_ALGORITHM": name}
+        )
+        results.append({"algorithm": name, "metrics": metrics, "runs": runs})
+    results.sort(key=lambda row: row["metrics"][metric], reverse=profile["direction"] == "max")
+    payload = {
+        "profile": profile_name,
+        "profile_version": profile.get("version", "1"),
+        "primary_metric": metric,
+        "direction": profile["direction"],
+        "budget": profile["budget"],
+        "seeds": list(seeds),
+        "protocol_version": PROTOCOL_VERSION,
+        "environment": {"python": platform.python_version(), "platform": platform.platform()},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "results": results,
+    }
+    (root / "research" / "algorithms.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return payload
+
+
 def reproduce(root: Path, experiment_id: str) -> dict:
     record = next((item for item in records(root) if item["experiment_id"] == experiment_id), None)
     if not record or not record.get("git_commit"):

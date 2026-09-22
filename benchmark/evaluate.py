@@ -27,12 +27,13 @@ def _parse(stdout: str) -> dict[str, float]:
     return parsed
 
 
-def evaluate(root: Path, command: list[str], seeds: list[int], budget: dict) -> tuple[dict, list[dict]]:
+def evaluate(root: Path, command: list[str], seeds: list[int], budget: dict, extra_env: dict | None = None) -> tuple[dict, list[dict]]:
     runs = []
     for seed in seeds:
         env = os.environ.copy()
         env["NRL_SEED"] = str(seed)
         env["NRL_BUDGET"] = json.dumps(budget, sort_keys=True)
+        env.update(extra_env or {})
         started = time.perf_counter()
         process = subprocess.run(command, cwd=root, env=env, text=True, capture_output=True)
         elapsed = time.perf_counter() - started

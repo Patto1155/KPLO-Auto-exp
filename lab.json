@@ -17,6 +17,15 @@
       "quick_seeds": [1337],
       "confirmation_seeds": [1337, 2027, 4099]
     },
+    "rl-reasoning": {
+      "version": "1.0.0",
+      "command": ["python", "benchmark/rl_eval.py"],
+      "primary_metric": "heldout_pass_at_1",
+      "direction": "max",
+      "budget": {"rollouts": 20000, "eval_problems": 2048},
+      "quick_seeds": [101],
+      "confirmation_seeds": [101, 211, 307]
+    },
     "chess-tactics": {
       "version": "3.0.0",
       "command": ["python", "benchmark/chess_tactics_eval.py"],

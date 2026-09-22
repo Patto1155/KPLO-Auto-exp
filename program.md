@@ -3,7 +3,9 @@
 Your objective is to improve the primary benchmark under the fixed protected protocol.
 
 Start by reading `docs/AGENT_QUICKSTART.md`. Choose exactly one profile and remain on
-that profile's ancestry. For chess research, edit only `chess_agent.py`.
+that profile's ancestry. For chess research, edit only `chess_agent.py`. For RL
+reasoning research, edit `rl.py`, `model.py`, `sampling.py`, or `algorithms/`, and say
+which algorithm you ran with `--algorithm`.
 
 For every hypothesis:
 
