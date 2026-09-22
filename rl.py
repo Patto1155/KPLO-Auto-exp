@@ -20,7 +20,7 @@ from sampling import categorical, temper
 ALGORITHM = "klpo"
 GROUP_SIZE = 8
 BATCH_PROBLEMS = 4
-LEARNING_RATE = 0.05
+LEARNING_RATE = 0.02
 TEMPERATURE = 1.0
 ENTROPY_BONUS = 0.0
 GRADIENT_CLIP = 5.0
