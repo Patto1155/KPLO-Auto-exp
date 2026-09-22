@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 from benchmark.template_registry import load_template, summaries, template_paths
-from harness.runner import audit, confirm, reproduce, run_experiment
+from harness.runner import algorithm_matrix, audit, confirm, reproduce, run_experiment
 from harness.results import records
 from harness.progress import render_progress
 
@@ -28,7 +28,7 @@ experiment = sub.add_parser("experiment")
 experiment.add_argument("--hypothesis", required=True)
 experiment.add_argument("--description", default="")
 experiment.add_argument("--algorithm", default="unspecified")
-experiment.add_argument("--profile", choices=("smoke", "pretrain", "chess-tactics"))
+experiment.add_argument("--profile", choices=("smoke", "pretrain", "chess-tactics", "rl-reasoning"))
 confirmation = sub.add_parser("confirm"); confirmation.add_argument("experiment_id")
 auditing = sub.add_parser("audit"); auditing.add_argument("experiment_id")
 reproduction = sub.add_parser("reproduce"); reproduction.add_argument("experiment_id")
@@ -36,6 +36,8 @@ sub.add_parser("status")
 plot = sub.add_parser("plot")
 plot.add_argument("--profile", required=True)
 plot.add_argument("--output")
+matrix = sub.add_parser("algorithms", help="benchmark every RL algorithm under one shared budget")
+matrix.add_argument("--profile", default="rl-reasoning")
 template = sub.add_parser("template", help="inspect protected environment benchmark templates")
 template_sub = template.add_subparsers(dest="template_command", required=True)
 template_sub.add_parser("list")
@@ -51,6 +53,16 @@ elif args.command == "audit":
     show(audit(ROOT, args.experiment_id))
 elif args.command == "reproduce":
     show(reproduce(ROOT, args.experiment_id))
+elif args.command == "algorithms":
+    payload = algorithm_matrix(ROOT, args.profile)
+    metric = payload["primary_metric"]
+    print(f"\n{payload['profile']} | {metric} | seeds {payload['seeds']} | budget {payload['budget']}")
+    print(f"{'Algorithm':<16}{metric:>22}{'std':>10}{'entropy':>10}{'gen gap':>10}")
+    for row in payload["results"]:
+        values = row["metrics"]
+        print(f"{row['algorithm']:<16}{values[metric]:>22.4f}{values.get(metric + '_std', 0.0):>10.4f}"
+              f"{values.get('entropy', 0.0):>10.4f}{values.get('generalisation_gap', 0.0):>10.4f}")
+    print("\nWritten to research/algorithms.json")
 elif args.command == "template":
     if args.template_command == "list":
         show({"templates": summaries()})

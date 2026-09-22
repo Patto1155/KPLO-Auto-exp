@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from harness.git_state import git
+from harness.git_state import git, is_ancestor
 
 
 def preserve_candidate(root: Path, experiment_id: str, paths: list[str]) -> str:
@@ -14,6 +14,23 @@ def preserve_candidate(root: Path, experiment_id: str, paths: list[str]) -> str:
 
 def return_to_parent(root: Path, parent: str) -> None:
     git(root, "reset", "--hard", parent)
+
+
+def adopt(root: Path, experiment_id: str, commit: str, paths: list[str]) -> bool:
+    """Put a promoted champion's code back on the active branch.
+
+    A candidate that was rolled back before promotion — an anomalous jump that only
+    an audit confirms — lives solely under `refs/nrl/experiments/`. Without this the
+    branch would keep building on a baseline worse than its own recorded champion.
+    """
+    if not paths or is_ancestor(root, commit):
+        return False
+    git(root, "checkout", commit, "--", *paths)
+    git(root, "add", "--", *paths)
+    if not git(root, "diff", "--cached", "--name-only", "--", *paths):
+        return False
+    git(root, "commit", "-m", f"champion({experiment_id}): adopt confirmed candidate")
+    return True
 
 
 def promote(root: Path, profile: str, experiment_id: str, commit: str) -> None:

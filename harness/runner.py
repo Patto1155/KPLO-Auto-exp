@@ -7,7 +7,7 @@ from pathlib import Path
 
 from benchmark.evaluate import evaluate
 from benchmark.protocol import PROTOCOL_VERSION
-from harness.accept import preserve_candidate, promote, return_to_parent
+from harness.accept import adopt, preserve_candidate, promote, return_to_parent
 from harness.compare import decide
 from harness.git_state import changed_files, fingerprint, git, head, revision_tree, validate_candidate_paths
 from harness.results import append_record, next_id, records, write_leaderboard
@@ -126,6 +126,7 @@ def confirm(root: Path, experiment_id: str) -> dict:
               "timestamp": datetime.now(timezone.utc).isoformat(), "notes": "; ".join(warnings)}
     if decision == "KEEP":
         promote(root, original["parameters"]["profile"], record["experiment_id"], original["git_commit"])
+        adopt(root, record["experiment_id"], original["git_commit"], original["changed_files"])
     _record(root, record)
     return record
 
@@ -164,8 +165,51 @@ def audit(root: Path, experiment_id: str) -> dict:
               "notes": notes}
     if decision == "KEEP":
         promote(root, profile_name, record["experiment_id"], original["git_commit"])
+        adopt(root, record["experiment_id"], original["git_commit"], original["changed_files"])
     _record(root, record)
     return record
+
+
+ALGORITHM_MATRIX = ("reinforce", "grpo", "klpo", "flashreinforce")
+# Wider than a confirmation run: separating algorithms needs more seeds than
+# separating a candidate from its own parent.
+MATRIX_SEEDS = (101, 211, 307, 401, 509, 601, 701, 809)
+
+
+def algorithm_matrix(
+    root: Path,
+    profile_name: str,
+    algorithms: tuple[str, ...] = ALGORITHM_MATRIX,
+    seeds: tuple[int, ...] = MATRIX_SEEDS,
+) -> dict:
+    """Measure every algorithm on one profile under an identical budget and seed set.
+
+    This establishes reference numbers; it never promotes a champion, because the
+    champion is defined by the committed mutable code rather than by an override.
+    """
+    profile = load_config(root)["profiles"][profile_name]
+    metric = profile["primary_metric"]
+    results = []
+    for name in algorithms:
+        metrics, runs = evaluate(
+            root, profile["command"], list(seeds), profile["budget"], {"NRL_ALGORITHM": name}
+        )
+        results.append({"algorithm": name, "metrics": metrics, "runs": runs})
+    results.sort(key=lambda row: row["metrics"][metric], reverse=profile["direction"] == "max")
+    payload = {
+        "profile": profile_name,
+        "profile_version": profile.get("version", "1"),
+        "primary_metric": metric,
+        "direction": profile["direction"],
+        "budget": profile["budget"],
+        "seeds": list(seeds),
+        "protocol_version": PROTOCOL_VERSION,
+        "environment": {"python": platform.python_version(), "platform": platform.platform()},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "results": results,
+    }
+    (root / "research" / "algorithms.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return payload
 
 
 def reproduce(root: Path, experiment_id: str) -> dict:

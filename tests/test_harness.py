@@ -1,3 +1,5 @@
+import math
+import random
 import unittest
 import json
 import tempfile
@@ -5,16 +7,32 @@ from pathlib import Path
 
 import chess
 
+from algorithms.flashreinforce import FlashREINFORCE
 from algorithms.grpo import GRPO
 from algorithms.klpo import KLPO
 from algorithms.reinforce import REINFORCE
 from benchmark.metrics import improvement
+from benchmark.reasoning_env import (
+    ANSWER_DIGITS,
+    HeldoutAccessError,
+    Problem,
+    RolloutBudgetExceeded,
+    TrainingEnvironment,
+    all_problems,
+    context,
+    dense_reward,
+    heldout_split,
+    train_split,
+)
+from benchmark.rl_eval import decode
 from benchmark.template_registry import load_template, summaries
 from harness.compare import decide
 from harness.git_state import validate_candidate_paths
-from rl import Rollout
+from model import Policy
+from rl import Rollout, Step, analytic_kl, sequence_kl, train_policy
 from benchmark.chess_tactics_eval import forcing_moves, generate_suite
-from harness.accept import promote
+from harness.accept import adopt, preserve_candidate, promote, return_to_parent
+from harness.git_state import git, head
 from harness.progress import render_progress
 
 
@@ -35,9 +53,145 @@ class HarnessTests(unittest.TestCase):
 
     def test_algorithms_share_interface(self):
         rollouts = [Rollout(-0.2, 1.0, -0.25, 0), Rollout(-0.4, 0.0, -0.3, 0)]
-        for algorithm in (REINFORCE(), GRPO(), KLPO()):
+        for algorithm in (REINFORCE(), GRPO(), KLPO(), FlashREINFORCE()):
             self.assertEqual(len(algorithm.losses(rollouts)), 2)
+            self.assertEqual(len(algorithm.coefficients(rollouts)), 2)
+            self.assertIsInstance(algorithm.kl_gradient_scale(), float)
+            algorithm.observe(rollouts)
 
+    def test_higher_reward_earns_a_larger_coefficient(self):
+        rollouts = [Rollout(-0.2, 1.0, -0.2, 0), Rollout(-0.2, 0.0, -0.2, 0)]
+        for algorithm in (REINFORCE(), GRPO(), KLPO(), FlashREINFORCE()):
+            better, worse = algorithm.coefficients(rollouts)
+            self.assertGreater(better, worse, algorithm.name)
+
+
+class ReasoningEnvironmentTests(unittest.TestCase):
+    def test_splits_partition_the_task_without_overlap(self):
+        train = train_split()
+        heldout = heldout_split()
+        self.assertEqual(len(train) + len(heldout), len(all_problems()))
+        self.assertEqual(set(train) & set(heldout), set())
+        self.assertGreater(len(heldout), 1000)
+
+    def test_answers_and_rewards_are_exact(self):
+        problem = Problem((3, 9, 1, 7))
+        self.assertEqual(problem.answer, (1, 9))
+        self.assertEqual(dense_reward(problem, (1, 9)), 1.0)
+        self.assertEqual(dense_reward(problem, (1, 0)), 0.5)
+        self.assertEqual(dense_reward(problem, (0, 0)), 0.0)
+
+    def test_context_pads_undecided_answer_slots(self):
+        slots = context((1, 2, 3, 4), ())
+        self.assertEqual(len(slots), 4 + ANSWER_DIGITS - 1)
+        self.assertEqual(slots[:4], [1, 2, 3, 4])
+
+    def test_budget_is_enforced(self):
+        environment = TrainingEnvironment(2, 101)
+        problem = environment.sample_problem(random.Random(0))
+        environment.score(problem, (0, 0))
+        environment.score(problem, (0, 0))
+        with self.assertRaises(RolloutBudgetExceeded):
+            environment.score(problem, (0, 0))
+
+    def test_training_cannot_score_heldout_problems(self):
+        environment = TrainingEnvironment(10, 101)
+        with self.assertRaises(HeldoutAccessError):
+            environment.score(heldout_split()[0], (0, 0))
+
+
+class PolicyTests(unittest.TestCase):
+    def test_distribution_is_normalised(self):
+        policy = Policy.initialise(7)
+        distribution = policy.distribution(context((1, 2, 3, 4), ()))
+        self.assertAlmostEqual(sum(distribution), 1.0, places=9)
+        self.assertTrue(all(value > 0.0 for value in distribution))
+
+    def test_backward_matches_finite_differences(self):
+        """The hand-written backward pass is the one thing nothing else would catch."""
+        policy = Policy.initialise(3)
+        slots = context((4, 1, 8, 2), ())
+        action = 5
+
+        def negative_logprob() -> float:
+            return -math.log(policy.distribution(slots)[action])
+
+        probabilities, cache = policy.forward(slots)
+        dlogits = list(probabilities)
+        dlogits[action] -= 1.0
+        gradients = policy.zero_gradients()
+        policy.accumulate(cache, dlogits, gradients)
+
+        epsilon = 1e-6
+        for tensor_index, row_index, column in ((1, 0, 0), (1, 3, 7), (3, 5, 2), (0, 4, 1)):
+            row = policy.tensors()[tensor_index][row_index]
+            original = row[column]
+            row[column] = original + epsilon
+            high = negative_logprob()
+            row[column] = original - epsilon
+            low = negative_logprob()
+            row[column] = original
+            numeric = (high - low) / (2 * epsilon)
+            analytic = gradients[tensor_index][row_index][column]
+            self.assertAlmostEqual(numeric, analytic, places=6)
+
+
+class KLPOTests(unittest.TestCase):
+    def _rollout(self, logprob: float, reference_logprob: float) -> Rollout:
+        return Rollout(logprob, 1.0, reference_logprob, 0)
+
+    def test_sampled_estimators_agree_at_zero_divergence(self):
+        item = self._rollout(-1.0, -1.0)
+        for estimator in ("k1", "k2", "k3"):
+            self.assertAlmostEqual(sequence_kl(item, estimator), 0.0, places=9)
+
+    def test_k3_is_non_negative_where_k1_is_signed(self):
+        item = self._rollout(-1.5, -1.0)
+        self.assertLess(sequence_kl(item, "k1"), 0.0)
+        self.assertGreater(sequence_kl(item, "k3"), 0.0)
+
+    def test_analytic_kl_is_zero_against_itself_and_positive_otherwise(self):
+        probabilities = [0.7, 0.3]
+        same = Rollout(-0.3, 1.0, -0.3, 0, (Step([0], 0, probabilities, probabilities, {}),))
+        self.assertAlmostEqual(analytic_kl(same), 0.0, places=9)
+        different = Rollout(-0.3, 1.0, -0.3, 0, (Step([0], 0, probabilities, [0.4, 0.6], {}),))
+        self.assertGreater(analytic_kl(different), 0.0)
+
+    def test_exact_estimator_uses_the_analytic_gradient_path(self):
+        self.assertGreater(KLPO(estimator="exact").kl_gradient_scale(), 0.0)
+        self.assertEqual(KLPO(estimator="k3").kl_gradient_scale(), 0.0)
+
+    def test_adaptive_controller_tracks_the_kl_budget(self):
+        probabilities = [0.9, 0.1]
+        drifted = [Rollout(-0.1, 1.0, -0.1, 0, (Step([0], 0, probabilities, [0.1, 0.9], {}),))]
+        tightening = KLPO(kl_coefficient=0.01, kl_target=0.001)
+        tightening.observe(drifted)
+        self.assertGreater(tightening.kl_coefficient, 0.01)
+
+        aligned = [Rollout(-0.1, 1.0, -0.1, 0, (Step([0], 0, probabilities, probabilities, {}),))]
+        relaxing = KLPO(kl_coefficient=0.01, kl_target=0.5)
+        relaxing.observe(aligned)
+        self.assertLess(relaxing.kl_coefficient, 0.01)
+
+    def test_unknown_configuration_is_rejected(self):
+        with self.assertRaises(ValueError):
+            KLPO(estimator="k9")
+        with self.assertRaises(ValueError):
+            KLPO(baseline="magic")
+
+
+class TrainingLoopTests(unittest.TestCase):
+    def test_training_respects_the_budget_and_improves_reward(self):
+        environment = TrainingEnvironment(1600, 101)
+        policy = train_policy(environment, Policy.initialise(101), {}, 101, "klpo")
+        self.assertLessEqual(environment.rollouts_used, 1600)
+        self.assertGreater(environment.train_reward_mean, 0.0)
+        emitted = decode(policy, Problem((1, 2, 3, 4)))
+        self.assertEqual(len(emitted), ANSWER_DIGITS)
+        self.assertTrue(all(0 <= digit <= 9 for digit in emitted))
+
+
+class LedgerAndTemplateTests(unittest.TestCase):
     def test_environment_templates_validate(self):
         expected = {
             "minecraft_ender_dragon",
@@ -74,6 +228,28 @@ class HarnessTests(unittest.TestCase):
             payload = json.loads((root / "research" / "current_best.json").read_text())
             self.assertEqual(payload["profiles"]["smoke"]["git_commit"], "abc")
             self.assertEqual(payload["profiles"]["chess-tactics"]["git_commit"], "def")
+
+    def test_audited_champion_returns_to_the_active_branch(self):
+        """A rolled-back candidate that an audit promotes must not stay off-branch."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = lambda *args: git(root, *args)  # noqa: E731
+            run("init", "-q", "-b", "main")
+            run("config", "user.email", "test@example.invalid")
+            run("config", "user.name", "Test")
+            (root / "mutable.py").write_text("VALUE = 1\n")
+            run("add", "mutable.py")
+            run("commit", "-q", "-m", "baseline")
+            parent = head(root)
+
+            (root / "mutable.py").write_text("VALUE = 2\n")
+            candidate = preserve_candidate(root, "exp_0001", ["mutable.py"])
+            return_to_parent(root, parent)
+            self.assertEqual((root / "mutable.py").read_text(), "VALUE = 1\n")
+
+            self.assertTrue(adopt(root, "exp_0002", candidate, ["mutable.py"]))
+            self.assertEqual((root / "mutable.py").read_text(), "VALUE = 2\n")
+            self.assertFalse(adopt(root, "exp_0002", candidate, ["mutable.py"]))
 
     def test_progress_chart_requires_history(self):
         with tempfile.TemporaryDirectory() as directory:

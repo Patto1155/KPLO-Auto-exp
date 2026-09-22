@@ -50,6 +50,52 @@ The primary metric is validation bits per byte (`val_bpb`, lower is better), wit
 fixed 300-second training budget inherited from upstream. Baseline results are cached
 by champion commit, profile, budget, seed protocol, and protected protocol content.
 
+## RL reasoning profile
+
+The second research mode is the one the harness was built for: a fixed checkpoint,
+rollouts scored by a verifiable reward, RL training, and a held-out benchmark.
+
+The task is extreme selection — given four digits, emit the smallest then the largest.
+Answers are computed rather than stored, so there is no label file to read, and the
+train/held-out partition is a protected hash of the prompt. Training code can only
+reach the train split; `TrainingEnvironment.score` raises on a held-out problem and
+meters every rollout against a fixed budget.
+
+```bash
+# Baseline evaluator (no GPU, no third-party packages)
+NRL_SEED=101 NRL_BUDGET='{"rollouts":20000,"eval_problems":2048}' \
+  python benchmark/rl_eval.py
+
+# Modify rl.py, model.py, sampling.py or algorithms/, then:
+python research.py experiment --profile rl-reasoning \
+  --algorithm klpo --hypothesis "..."
+```
+
+The primary metric is `heldout_pass_at_1`: exact-match accuracy under greedy decoding,
+on problems never scored during training. Decoding at evaluation time lives in the
+protected evaluator, so a candidate cannot change how it is measured.
+
+### Algorithm baselines
+
+`python research.py algorithms --profile rl-reasoning` runs every algorithm from an
+identical starting checkpoint, budget and seed set. Measured over eight seeds at 20k
+rollouts:
+
+| Algorithm | heldout_pass_at_1 | std | entropy | gen gap |
+| --- | --- | --- | --- | --- |
+| klpo | 0.2205 | 0.0710 | 0.1268 | 0.0083 |
+| flashreinforce | 0.1784 | 0.0565 | 0.0248 | 0.0146 |
+| grpo | 0.1733 | 0.0498 | 0.0088 | 0.0165 |
+| reinforce | 0.1489 | 0.0460 | 0.0355 | 0.0103 |
+
+Read these as the harness reports them, not as a ranking. Seed-to-seed spread is large
+relative to the gaps: KLPO's margin over REINFORCE is roughly three standard errors of
+the mean and is the only separation the data supports. KLPO versus FlashREINFORCE is
+not a distinguishable difference at eight seeds. The one robust pattern is mechanistic
+rather than ordinal — the runs that collapse entropy also generalise worst.
+
+KLPO is experiment zero. It is expected to lose to something an agent writes later.
+
 ## Boundaries
 
 Mutable research code:
@@ -91,9 +137,10 @@ mutable core file and submit every proposal through the same protected compariso
 ## Scope
 
 The first milestone—the controlled experiment lifecycle—works locally with the smoke
-profile. REINFORCE, GRPO, KLPO, and FlashREINFORCE reference interfaces are included so
-the same harness can next be connected to a small verifiable-reward reasoning task.
-They are baselines, not presumed winners.
+profile. The second milestone is the `rl-reasoning` profile above: REINFORCE, GRPO,
+KLPO and FlashREINFORCE are implemented against a shared gradient interface and
+measured on a verifiable-reward task under one budget. They are baselines, not
+presumed winners.
 
 Protected adapter specifications are also included for Minecraft Ender Dragon,
 Minecraft progression, chess engine play, chess tactics, and 9x9 Go:

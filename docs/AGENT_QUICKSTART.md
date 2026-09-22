@@ -35,6 +35,28 @@ For a very large improvement withheld as anomalous:
 python research.py audit exp_XXXX
 ```
 
+## RL reasoning research
+
+The mutable surface is wider here than on chess, so change one thing at a time.
+
+- `rl.py` — optimiser, learning rate, group and batch shape, entropy bonus, gradient
+  clipping, KL anchor refresh interval, and which algorithm runs.
+- `algorithms/` — the objectives themselves. KLPO exposes the KL estimator
+  (`exact`, `k1`, `k2`, `k3`), the KL target, and the adaptive controller.
+- `model.py` — policy width, depth, initialisation.
+- `sampling.py` — how training explores. Evaluation decoding is protected.
+
+```bash
+python research.py experiment --profile rl-reasoning \
+  --algorithm klpo --hypothesis "One falsifiable sentence"
+
+# Reference numbers for every algorithm under one budget and seed set
+python research.py algorithms --profile rl-reasoning
+```
+
+Seed variance on this profile is large. A single-seed quick KEEP means very little
+until `confirm` reproduces it.
+
 Regenerate the hill-climb chart:
 
 ```bash

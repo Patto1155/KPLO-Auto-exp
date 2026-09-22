@@ -51,6 +51,16 @@
   },
   {
     "rank": 6,
+    "experiment": "exp_0015",
+    "parent": "rl-reasoning-baseline",
+    "method": "klpo",
+    "score": 0.3982000339616234,
+    "delta": 0.23637289862455427,
+    "compute": 3.828098051666681,
+    "confirmed": true
+  },
+  {
+    "rank": 7,
     "experiment": "exp_0008",
     "parent": "chess-tactics-v2-baseline",
     "method": "queen-depth3",
@@ -60,7 +70,7 @@
     "confirmed": false
   },
   {
-    "rank": 7,
+    "rank": 8,
     "experiment": "exp_0009",
     "parent": "chess-tactics-v2-baseline",
     "method": "queen-depth3",
@@ -70,7 +80,7 @@
     "confirmed": true
   },
   {
-    "rank": 8,
+    "rank": 9,
     "experiment": "exp_0001",
     "parent": "baseline",
     "method": "smoke-bias",
@@ -80,7 +90,7 @@
     "confirmed": false
   },
   {
-    "rank": 9,
+    "rank": 10,
     "experiment": "exp_0002",
     "parent": "baseline",
     "method": "smoke-bias",
